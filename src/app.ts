@@ -4,6 +4,7 @@ import { customElement, property } from "lit/decorators.js";
 type Site = {
   feedUrl: string;
   siteUrl: string;
+  domain: string;
 };
 
 @customElement("x-app")
@@ -16,6 +17,7 @@ export class App extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
+
     try {
       const response = await fetch("/sites.txt");
       const text = await response.text();
@@ -25,7 +27,8 @@ export class App extends LitElement {
         .map((feedUrl) => {
           try {
             const siteUrl = new URL(feedUrl).origin;
-            return { feedUrl, siteUrl };
+            const domain = new URL(siteUrl).hostname;
+            return { feedUrl, siteUrl, domain };
           } catch (error) {
             console.error("Failed to parse site URL:", error);
             return null;
@@ -51,14 +54,24 @@ export class App extends LitElement {
   render() {
     return html`
       <main>
-        ${this.currentSite
-          ? html`<iframe src=${this.currentSite.siteUrl}></iframe>`
-          : null}
-        <nav>
-          <button type="button" @click=${this._handleRandomClick}>
-            Random
+        <header>
+          <a href=${this.currentSite?.siteUrl} target="_blank"
+            >${this.currentSite?.domain}</a
+          >
+          <span class="spacer"></span>
+          <a href=${this.currentSite?.siteUrl} target="_blank">New tab</a>
+          <a href=${this.currentSite?.feedUrl}>RSS</a>
+        </header>
+        <div class="content">
+          ${this.currentSite
+            ? html`<iframe src=${this.currentSite.siteUrl}></iframe>`
+            : null}
+        </div>
+        <footer>
+          <button type="button" @click=${this._handleRandomClick} class="roll">
+            🎲
           </button>
-        </nav>
+        </footer>
       </main>
     `;
   }
@@ -68,19 +81,51 @@ export class App extends LitElement {
       position: absolute;
       inset: 0;
       height: 100dvh;
+      display: block;
+      --gap: 0.3em;
     }
 
     main {
       position: absolute;
-      inset: 0;
+      inset: var(--gap);
       display: grid;
-      grid-template-rows: 1fr auto;
+      grid-template-rows: auto 1fr auto;
+      gap: var(--gap);
+    }
+
+    header {
+      display: flex;
+      align-items: space-between;
+      gap: var(--gap);
+    }
+    .spacer {
+      flex: 1;
+    }
+    .content {
+      overflow: hidden;
+      border-radius: var(--border-radius-panel);
     }
 
     iframe {
       width: 100%;
       height: 100%;
       border: none;
+    }
+
+    footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .roll {
+      appearance: none;
+      border: none;
+      background: none;
+      padding: 0;
+      margin: 0;
+      font-size: var(--s-5);
+      cursor: pointer;
     }
   `;
 }
