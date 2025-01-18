@@ -15,8 +15,12 @@ export class App extends LitElement {
   @property({ type: Object })
   private currentSite: Site | null = null;
 
+  @property({ type: Boolean })
+  private canShare = false;
+
   async connectedCallback() {
     super.connectedCallback();
+    this.canShare = "share" in navigator;
 
     try {
       const response = await fetch("/sites.txt");
@@ -51,6 +55,29 @@ export class App extends LitElement {
     }
   }
 
+  private async _handleShare(e: Event) {
+    if (!this.currentSite) return;
+
+    if (this.canShare) {
+      e.preventDefault();
+      try {
+        await navigator.share({
+          title: `RSS feed for ${this.currentSite.domain}`,
+          text: `Subscribe to ${this.currentSite.domain}'s RSS feed`,
+          url: this.currentSite.feedUrl,
+        });
+      } catch (error) {
+        console.error("Error sharing:", error);
+        // Ask user if they want to open in new tab
+        if (
+          confirm("Sharing didn't work, should I open the feed in a new tab?")
+        ) {
+          window.open(this.currentSite.feedUrl, "_blank");
+        }
+      }
+    }
+  }
+
   render() {
     return html`
       <main>
@@ -60,7 +87,9 @@ export class App extends LitElement {
           >
           <span class="spacer"></span>
           <a href=${this.currentSite?.siteUrl} target="_blank">New tab</a>
-          <a href=${this.currentSite?.feedUrl}>RSS</a>
+          <a href=${this.currentSite?.feedUrl} @click=${this._handleShare}
+            >RSS</a
+          >
         </header>
         <div class="content">
           ${this.currentSite
