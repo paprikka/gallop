@@ -83,6 +83,11 @@ export class App extends LitElement {
       height: 100dvh;
       display: block;
       --gap: 0.3em;
+      font-size: var(--s--1);
+    }
+
+    a:not([class]) {
+      color: var(--color-link);
     }
 
     main {
@@ -91,6 +96,8 @@ export class App extends LitElement {
       display: grid;
       grid-template-rows: auto 1fr auto;
       gap: var(--gap);
+      /* handle iOS bottom bar */
+      padding-block-end: 12px;
     }
 
     header {
