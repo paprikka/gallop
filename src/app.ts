@@ -18,6 +18,12 @@ export class App extends LitElement {
   @property({ type: Boolean })
   private canShare = false;
 
+  @property({ type: Boolean })
+  private iframeError = false;
+
+  @property({ type: String })
+  private errorMessage = "Unable to load page";
+
   async connectedCallback() {
     super.connectedCallback();
     this.canShare = "share" in navigator;
@@ -30,7 +36,11 @@ export class App extends LitElement {
         .filter((line) => line.trim())
         .map((feedUrl) => {
           try {
-            const siteUrl = new URL(feedUrl).origin;
+            let siteUrl = new URL(feedUrl).origin;
+            // Replace http with https if needed
+            if (siteUrl.startsWith("http:")) {
+              siteUrl = siteUrl.replace("http:", "https:");
+            }
             const domain = new URL(siteUrl).hostname;
             return { feedUrl, siteUrl, domain };
           } catch (error) {
@@ -45,6 +55,18 @@ export class App extends LitElement {
     } catch (error) {
       console.error("Failed to load sites:", error);
     }
+
+    // Listen for CSP violations
+    document.addEventListener("securitypolicyviolation", (e) => {
+      debugger;
+      if (
+        e.blockedURI &&
+        this.currentSite?.siteUrl.includes(new URL(e.blockedURI).hostname)
+      ) {
+        this.errorMessage = "Content blocked due to security policy";
+        this.iframeError = true;
+      }
+    });
   }
 
   private _handleRandomClick() {
@@ -78,6 +100,21 @@ export class App extends LitElement {
     }
   }
 
+  private _handleIframeError() {
+    this.iframeError = true;
+  }
+
+  private _handleIframeLoad(e: Event) {
+    const iframe = e.target as HTMLIFrameElement;
+    try {
+      // Try to access iframe content - will throw if blocked
+      iframe.contentWindow?.location.href;
+    } catch (error) {
+      this.errorMessage = "Content blocked due to security policy";
+      this.iframeError = true;
+    }
+  }
+
   render() {
     return html`
       <main>
@@ -93,7 +130,24 @@ export class App extends LitElement {
         </header>
         <div class="content">
           ${this.currentSite
-            ? html`<iframe src=${this.currentSite.siteUrl}></iframe>`
+            ? html`
+                <iframe
+                  src=${this.currentSite.siteUrl}
+                  @error=${this._handleIframeError}
+                  @load=${this._handleIframeLoad}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                ></iframe>
+                ${false && this.iframeError
+                  ? html`<div class="error-overlay">
+                      <p>${this.errorMessage}</p>
+                      <p>
+                        <a href=${this.currentSite.siteUrl} target="_blank"
+                          >Open in new tab</a
+                        >
+                      </p>
+                    </div>`
+                  : null}
+              `
             : null}
         </div>
         <footer>
@@ -126,13 +180,13 @@ export class App extends LitElement {
       grid-template-rows: auto 1fr auto;
       gap: var(--gap);
       /* handle iOS bottom bar */
-      padding-block-end: 12px;
+      padding-block-end: 16px;
     }
 
     header {
       display: flex;
       align-items: space-between;
-      gap: var(--gap);
+      gap: 1em;
     }
     .spacer {
       flex: 1;
@@ -140,6 +194,7 @@ export class App extends LitElement {
     .content {
       overflow: hidden;
       border-radius: var(--border-radius-panel);
+      position: relative;
     }
 
     iframe {
@@ -162,6 +217,21 @@ export class App extends LitElement {
       margin: 0;
       font-size: var(--s-5);
       cursor: pointer;
+    }
+
+    .error-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background);
+      gap: var(--gap);
+    }
+
+    .error-overlay p {
+      margin: 0;
     }
   `;
 }
