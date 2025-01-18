@@ -141,7 +141,7 @@ export class App extends LitElement {
                   ? html`<div class="error-overlay">
                       <p>${this.errorMessage}</p>
                       <p>
-                        <a href=${this.currentSite.siteUrl} target="_blank"
+                        <a href=${this.currentSite?.siteUrl} target="_blank"
                           >Open in new tab</a
                         >
                       </p>
